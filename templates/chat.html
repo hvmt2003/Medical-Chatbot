@@ -1,67 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DocTalk</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-    <script src="https://kit.fontawesome.com/a2e0b2b1f7.js" crossorigin="anonymous"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DocTalk</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+  <script src="https://kit.fontawesome.com/a2e0b2b1f7.js" crossorigin="anonymous"></script>
 </head>
 <body>
-    <div class="app">
-        <div class="sidebar" id="sidebar">
-            <div class="sidebar-top">
-                <div class="brand">DocTalk</div>
-                <button class="btn-new" id="btn-new-chat">+ New chat</button>
-            </div>
-            <div class="search-wrap">
-                <input type="text" id="search-chats" placeholder="Search chats..." />
-            </div>
-            <div class="chat-list" id="chat-list">
-                </div>
-            <div class="sidebar-footer">
-                <a href="{{ url_for('logout') }}" style="color: #94a3b8; text-decoration: none;">Logout</a>
-            </div>
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <div class="brand">DocTalk</div>
+        <button class="btn-new" id="btn-new-chat">+ New chat</button>
+      </div>
+
+      <div class="search-wrap">
+        <input type="text" id="search-chats" placeholder="Search chats..."/>
+      </div>
+
+      <div class="chat-list" id="chat-list"></div>
+
+      <!-- GPT-style user footer -->
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar">{{ current_user.name[0] }}</div>
+          <div class="user-meta">
+            <div class="user-name">{{ current_user.name }}</div>
+            <a href="{{ url_for('logout') }}" class="logout-text">Logout</a>
+          </div>
         </div>
+      </div>
+    </aside>
 
-        <div class="main">
-            <div class="topbar">
-                <button class="btn-icon" id="toggle-sidebar"><i class="fa fa-bars"></i></button>
-                <div class="title" id="chat-title">DocTalk</div>
-                <div class="spacer"></div>
-            </div>
+    <!-- MAIN -->
+    <main class="main">
+      <div class="topbar">
+        <button class="btn-icon" id="toggle-sidebar" title="Toggle sidebar">
+          <i class="fa fa-bars"></i>
+        </button>
+        <div class="title" id="chat-title">DocTalk</div>
+        <div class="spacer"></div>
+      </div>
 
-            <div class="messages" id="messages">
-                </div>
+      <section class="messages" id="messages"></section>
 
-            <form class="composer" id="composer">
-                <textarea id="input-msg" placeholder="Ask about symptoms, medicines, diet..."></textarea>
-                <button id="send-btn" type="submit"><i class="fa fa-paper-plane"></i></button>
-            </form>
-        </div>
+      <form class="composer" id="composer">
+        <textarea id="input-msg" placeholder="Ask about symptoms, medicines, diet..." rows="1"></textarea>
+        <button id="send-btn" type="submit" title="Send">
+          <span class="send-icon">
+            <!-- white circular button with up-arrow -->
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d="M12 4l-5.5 5.5 1.4 1.4L11 8.8V20h2V8.8l3.1 2.1 1.4-1.4L12 4z" fill="#000"/>
+            </svg>
+          </span>
+        </button>
+      </form>
+    </main>
+  </div>
+
+  <!-- RENAME MODAL -->
+  <div class="modal hidden" id="rename-modal">
+    <div class="modal-panel">
+      <div class="modal-title">Rename chat</div>
+      <input id="rename-input" type="text" class="modal-input" />
+      <div class="modal-actions">
+        <button id="rename-cancel">Cancel</button>
+        <button id="rename-save" class="danger">Save</button>
+      </div>
     </div>
+  </div>
 
-    <div class="modal hidden" id="rename-modal">
-        <div class="modal-panel">
-            <div>Rename chat</div>
-            <input id="rename-input" type="text" style="width:100%; margin-top:10px; padding: 8px; border-radius: 8px; border: 0; background: #0b1624; color: var(--text);">
-            <div class="modal-actions">
-                <button id="rename-cancel">Cancel</button>
-                <button id="rename-save" class="danger">Save</button>
-            </div>
-        </div>
+  <!-- DELETE MODAL -->
+  <div class="modal hidden" id="delete-modal">
+    <div class="modal-panel">
+      <div class="modal-title">Delete this chat?</div>
+      <div class="modal-actions">
+        <button id="delete-cancel">Cancel</button>
+        <button id="delete-confirm" class="danger">Delete</button>
+      </div>
     </div>
+  </div>
 
-    <div class="modal hidden" id="delete-modal">
-        <div class="modal-panel">
-            <div>Are you sure you want to delete this chat?</div>
-            <div class="modal-actions">
-                <button id="delete-cancel">Cancel</button>
-                <button id="delete-confirm" class="danger">Delete</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

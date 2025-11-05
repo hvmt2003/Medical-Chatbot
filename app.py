@@ -286,11 +286,23 @@ def chat():
         )
 
         # Save to DB
+        # Save chat messages
         db.session.add_all([
-            ChatMessage(session_id=session_id, role="user", content=user_input),
-            ChatMessage(session_id=session_id, role="assistant", content=bot_reply),
+            ChatMessage(session_id=session_obj.id, role="user", content=user_input),
+            ChatMessage(session_id=session_obj.id, role="assistant", content=bot_reply),
         ])
         db.session.commit()
+
+        if session_obj.title == "New Chat":
+            try:
+                title_prompt = f"Generate a short, 3-5 word medical summary title for this query: {user_input}"
+                title_response = model.invoke(title_prompt)
+                title_text = title_response.content.strip().replace('"', '')
+                session_obj.title = title_text[:50] if title_text else "Medical Chat"
+                db.session.commit()
+            except Exception as e:
+                print("Title generation failed:", e)
+
 
         return jsonify({"reply": bot_reply})
 
