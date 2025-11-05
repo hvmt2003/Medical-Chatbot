@@ -1,10 +1,40 @@
-langchain==0.3.26
-langchain-google-genai    # LangChain Google GenAI integration (example name/version)
-google-genai>=1.0.0              # Google GenAI (Gemini) Python SDK
-flask==3.1.1
-sentence-transformers==4.1.0
-pypdf==5.6.1
-python-dotenv==1.1.0
-langchain-pinecone==0.2.8
-langchain-community==0.3.26
--e .
+# ---- Core Web Framework ----
+flask
+flask-login
+flask-bcrypt
+flask-sqlalchemy
+flask-session
+flask-cors
+
+# ---- Database ----
+SQLAlchemy
+
+# ---- Environment & Setup ----
+python-dotenv
+setuptools
+
+# ---- LangChain & AI Stack ----
+langchain
+langchain-community
+langchain-core
+langchain-huggingface
+langchain-pinecone
+langchain-google-genai
+
+# ---- Vector Database ----
+pinecone-client
+
+# ---- NLP & Translation ----
+deep-translator
+langdetect
+
+# ---- HuggingFace Embeddings ----
+transformers
+sentence-transformers
+
+# ---- Utility Libraries ----
+typing-extensions
+requests
+
+# ---- Deployment ----
+gunicorn
