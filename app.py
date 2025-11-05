@@ -1,8 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
-from flask_dance.contrib.google import make_google_blueprint, google
 from langchain_pinecone import PineconeVectorStore
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains import create_retrieval_chain
@@ -19,7 +18,6 @@ import os, re
 # Flask app setup
 # -------------------------------------------------
 load_dotenv()
-os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # allow HTTP (for localhost dev)
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "super_secret_key")
@@ -34,21 +32,6 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 # -------------------------------------------------
-# Google OAuth setup
-# -------------------------------------------------
-google_bp = make_google_blueprint(
-    client_id=os.getenv("GOOGLE_OAUTH_CLIENT_ID"),
-    client_secret=os.getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
-    redirect_to="google_callback",  # points to our callback below
-    scope=[
-        "openid",
-        "https://www.googleapis.com/auth/userinfo.profile",
-        "https://www.googleapis.com/auth/userinfo.email",
-    ],
-)
-app.register_blueprint(google_bp, url_prefix="/login")
-
-# -------------------------------------------------
 # Database models
 # -------------------------------------------------
 class User(UserMixin, db.Model):
@@ -56,12 +39,14 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=True)  # None for Google users
+    password = db.Column(db.String(200), nullable=False)
     sessions = db.relationship("ChatSession", backref="user", lazy=True, cascade="all, delete-orphan")
+
 
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
+
 
 class ChatSession(db.Model):
     __tablename__ = "chat_sessions"
@@ -75,6 +60,7 @@ class ChatSession(db.Model):
         last_message = ChatMessage.query.filter_by(session_id=self.id).order_by(ChatMessage.timestamp.desc()).first()
         return {"id": self.id, "title": self.title, "snippet": last_message.content if last_message else ""}
 
+
 class ChatMessage(db.Model):
     __tablename__ = "chat_messages"
     id = db.Column(db.Integer, primary_key=True)
@@ -85,6 +71,7 @@ class ChatMessage(db.Model):
 
     def to_dict(self):
         return {"role": self.role, "content": self.content}
+
 
 # -------------------------------------------------
 # LangChain setup (Gemini + Pinecone)
@@ -103,8 +90,9 @@ model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.2)
 question_answer_chain = create_stuff_documents_chain(model, system_prompt)
 rag_chain = create_retrieval_chain(retriever, question_answer_chain)
 
+
 # -------------------------------------------------
-# Utility functions
+# Utility function
 # -------------------------------------------------
 def clean_format(text: str) -> str:
     text = re.sub(r"\*\*", "", text)
@@ -112,10 +100,13 @@ def clean_format(text: str) -> str:
     text = re.sub(r"\s*•", r"\n•", text)
     text = re.sub(r"([.!?]) ", r"\1\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
+    # remove 'Namaste' or similar greetings from bot responses
+    text = re.sub(r"(?i)\bNamaste\b[!.]*", "", text)
     return text.strip()
 
+
 # -------------------------------------------------
-# Auth routes
+# Auth routes (manual only)
 # -------------------------------------------------
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
@@ -136,6 +127,7 @@ def signup():
 
     return render_template("signup.html")
 
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -143,45 +135,13 @@ def login():
         password = request.form["password"]
         user = User.query.filter_by(email=email).first()
 
-        if user and user.password and bcrypt.check_password_hash(user.password, password):
+        if user and bcrypt.check_password_hash(user.password, password):
             login_user(user)
             return redirect(url_for("chat_page"))
         flash("Invalid email or password.", "danger")
 
     return render_template("login.html")
 
-# -------------------------------------------------
-# Google OAuth callback handler
-# -------------------------------------------------
-@app.route("/google/callback")
-def google_callback():
-    if not google.authorized:
-        return redirect(url_for("google.login"))
-
-    # fetch user info
-    resp = google.get("https://www.googleapis.com/oauth2/v2/userinfo")
-    if not resp.ok:
-        flash("Google login failed. Please try again.", "danger")
-        return redirect(url_for("login"))
-
-    user_info = resp.json()
-    email = user_info.get("email")
-    name = user_info.get("name") or "Google User"
-
-    if not email:
-        flash("Google login did not return an email.", "danger")
-        return redirect(url_for("login"))
-
-    # login or sign up
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        user = User(name=name, email=email, password=None)
-        db.session.add(user)
-        db.session.commit()
-
-    login_user(user)
-    flash(f"Welcome, {name}!", "success")
-    return redirect(url_for("chat_page"))
 
 @app.route("/logout")
 @login_required
@@ -190,11 +150,13 @@ def logout():
     flash("You’ve been logged out successfully.", "info")
     return redirect(url_for("login"))
 
+
 @app.route("/")
 def index():
     if current_user.is_authenticated:
         return redirect(url_for("chat_page"))
     return redirect(url_for("login"))
+
 
 # -------------------------------------------------
 # Chat page
@@ -203,6 +165,7 @@ def index():
 @login_required
 def chat_page():
     return render_template("chat.html", user=current_user)
+
 
 # -------------------------------------------------
 # Chat APIs
@@ -213,6 +176,7 @@ def get_chats():
     sessions = ChatSession.query.filter_by(user_id=current_user.id).order_by(ChatSession.created_at.desc()).all()
     return jsonify([s.to_dict() for s in sessions])
 
+
 @app.route("/api/chats", methods=["POST"])
 @login_required
 def create_chat():
@@ -222,6 +186,7 @@ def create_chat():
     db.session.commit()
     return jsonify(session.to_dict())
 
+
 @app.route("/api/chats/<int:session_id>/messages", methods=["GET"])
 @login_required
 def get_messages(session_id):
@@ -230,6 +195,7 @@ def get_messages(session_id):
         return jsonify({"error": "Unauthorized"}), 403
     messages = ChatMessage.query.filter_by(session_id=session_obj.id).order_by(ChatMessage.timestamp.asc()).all()
     return jsonify([m.to_dict() for m in messages])
+
 
 @app.route("/api/chats/<int:session_id>/rename", methods=["POST"])
 @login_required
@@ -244,6 +210,7 @@ def rename_chat(session_id):
     db.session.commit()
     return jsonify(session_obj.to_dict())
 
+
 @app.route("/api/chats/<int:session_id>", methods=["DELETE"])
 @login_required
 def delete_chat(session_id):
@@ -254,8 +221,9 @@ def delete_chat(session_id):
     db.session.commit()
     return jsonify({"success": True})
 
+
 # -------------------------------------------------
-# Chatbot route
+# Chatbot route (with context memory)
 # -------------------------------------------------
 @app.route("/get", methods=["POST"])
 @login_required
@@ -272,7 +240,7 @@ def chat():
         if not session_obj or session_obj.user_id != current_user.id:
             return jsonify({"error": "Session not found or unauthorized"}), 404
 
-        # Detect language
+        # Detect and translate language
         try:
             user_lang = detect(user_input)
         except Exception:
@@ -280,24 +248,56 @@ def chat():
         if user_lang not in ["hi", "en", "gu", "mr", "ta", "te", "bn", "kn", "ml", "pa", "ur"]:
             user_lang = "en"
 
-        translated = GoogleTranslator(source="auto", target="en").translate(user_input) if user_lang != "en" else user_input
+        translated_input = (
+            GoogleTranslator(source="auto", target="en").translate(user_input)
+            if user_lang != "en"
+            else user_input
+        )
 
-        # Generate bot response
-        response = rag_chain.invoke({"input": translated})
+        # 🧠 Retrieve previous messages for context (last 5 exchanges)
+        previous_messages = (
+            ChatMessage.query.filter_by(session_id=session_id)
+            .order_by(ChatMessage.timestamp.desc())
+            .limit(6)
+            .all()[::-1]
+        )
+
+        history = "\n".join(
+            [f"User: {m.content}" if m.role == "user" else f"Assistant: {m.content}" for m in previous_messages]
+        )
+
+        # System context for professionalism
+        system_context = (
+            "You are DocTalk, a polite and knowledgeable Indian medical assistant chatbot. "
+            "Answer clearly, safely, and professionally. Do not greet with 'Namaste' or repetitive phrases.\n\n"
+        )
+
+        full_input = f"{system_context}{history}\nUser: {translated_input}\nAssistant:"
+
+        # Generate contextual response
+        response = rag_chain.invoke({"input": full_input})
         english_reply = clean_format(response["answer"])
-        bot_reply = GoogleTranslator(source="en", target=user_lang).translate(english_reply) if user_lang != "en" else english_reply
 
-        # Save chat
+        # Translate back
+        bot_reply = (
+            GoogleTranslator(source="en", target=user_lang).translate(english_reply)
+            if user_lang != "en"
+            else english_reply
+        )
+
+        # Save to DB
         db.session.add_all([
-            ChatMessage(session_id=session_obj.id, role="user", content=user_input),
-            ChatMessage(session_id=session_obj.id, role="assistant", content=bot_reply),
+            ChatMessage(session_id=session_id, role="user", content=user_input),
+            ChatMessage(session_id=session_id, role="assistant", content=bot_reply),
         ])
         db.session.commit()
 
         return jsonify({"reply": bot_reply})
+
     except Exception as e:
         print("Error:", e)
         return jsonify({"error": str(e)}), 500
+
 
 # -------------------------------------------------
 # Run app
