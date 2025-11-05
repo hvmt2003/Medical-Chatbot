@@ -1,99 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Medical Chatbot</title>
-
-    <!-- Bootstrap & Font Awesome -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DocTalk</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <script src="https://kit.fontawesome.com/a2e0b2b1f7.js" crossorigin="anonymous"></script>
 </head>
-
 <body>
-    <div class="chat-container">
-        <div class="chat-header d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center">
-                <img src="https://cdn-icons-png.flaticon.com/512/387/387569.png" class="bot-avatar" alt="Bot">
-                <div class="ml-3">
-                    <h5 class="mb-0">Medical Chatbot</h5>
-                    <p class="mb-0 text-light small">Ask your health queries below 💬</p>
-                </div>
+    <div class="app">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-top">
+                <div class="brand">DocTalk</div>
+                <button class="btn-new" id="btn-new-chat">+ New chat</button>
             </div>
-            <!-- <div class="settings-icon">
-                <i class="fas fa-cog"></i>
-            </div> -->
+            <div class="search-wrap">
+                <input type="text" id="search-chats" placeholder="Search chats..." />
+            </div>
+            <div class="chat-list" id="chat-list">
+                </div>
+            <div class="sidebar-footer">
+                <a href="{{ url_for('logout') }}" style="color: #94a3b8; text-decoration: none;">Logout</a>
+            </div>
         </div>
 
-        <div id="chatBody" class="chat-body"></div>
+        <div class="main">
+            <div class="topbar">
+                <button class="btn-icon" id="toggle-sidebar"><i class="fa fa-bars"></i></button>
+                <div class="title" id="chat-title">DocTalk</div>
+                <div class="spacer"></div>
+            </div>
 
-        <div class="chat-footer">
-            <form id="messageArea" class="d-flex w-100">
-                <input type="text" id="text" name="msg" placeholder="Type your message..." autocomplete="off" class="form-control type_msg" required/>
-                <button type="submit" id="send" class="send_btn ml-2"><i class="fas fa-paper-plane"></i></button>
+            <div class="messages" id="messages">
+                </div>
+
+            <form class="composer" id="composer">
+                <textarea id="input-msg" placeholder="Ask about symptoms, medicines, diet..."></textarea>
+                <button id="send-btn" type="submit"><i class="fa fa-paper-plane"></i></button>
             </form>
         </div>
     </div>
 
-    <script>
-        // Smooth auto-scroll to bottom
-        function scrollToBottom() {
-            const chatBody = $('#chatBody');
-            chatBody.stop().animate({ scrollTop: chatBody[0].scrollHeight }, 400);
-        }
+    <div class="modal hidden" id="rename-modal">
+        <div class="modal-panel">
+            <div>Rename chat</div>
+            <input id="rename-input" type="text" style="width:100%; margin-top:10px; padding: 8px; border-radius: 8px; border: 0; background: #0b1624; color: var(--text);">
+            <div class="modal-actions">
+                <button id="rename-cancel">Cancel</button>
+                <button id="rename-save" class="danger">Save</button>
+            </div>
+        </div>
+    </div>
 
-        $(document).ready(function () {
-            $("#messageArea").on("submit", function (event) {
-                event.preventDefault();
-                const date = new Date();
-                const str_time = date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-                const rawText = $("#text").val().trim();
-                if (!rawText) return;
+    <div class="modal hidden" id="delete-modal">
+        <div class="modal-panel">
+            <div>Are you sure you want to delete this chat?</div>
+            <div class="modal-actions">
+                <button id="delete-cancel">Cancel</button>
+                <button id="delete-confirm" class="danger">Delete</button>
+            </div>
+        </div>
+    </div>
 
-                const userHtml = `
-                    <div class="message user-message">
-                        <div class="message-content">${rawText}</div>
-                        <div class="message-time">${str_time}</div>
-                    </div>`;
-                $("#chatBody").append(userHtml);
-                $("#text").val("");
-                scrollToBottom();
-
-                // Typing dots animation
-                const typingHTML = `
-                    <div id="typing" class="message bot-message typing">
-                        <div class="message-content">
-                            <span class="typing-dot"></span>
-                            <span class="typing-dot"></span>
-                            <span class="typing-dot"></span>
-                        </div>
-                    </div>`;
-                $("#chatBody").append(typingHTML);
-                scrollToBottom();
-
-                $.ajax({
-                    data: { msg: rawText },
-                    type: "POST",
-                    url: "/get",
-                }).done(function (data) {
-                    $("#typing").remove();
-
-                    const botHtml = `
-                        <div class="message bot-message">
-                            <div class="message-content">${data}</div>
-                            <div class="message-time">${str_time}</div>
-                        </div>`;
-                    $("#chatBody").append(botHtml);
-                    scrollToBottom();
-                });
-            });
-        });
-    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Chatbot | Home</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div style="text-align: center; margin-top: 100px;">
+        <h1>Welcome to Medical Chatbot 🩺</h1>
+        <p>Your friendly AI health assistant.</p>
+        <a href="{{ url_for('login') }}" style="color: #00c6ff; font-weight: bold;">Login</a> |
+        <a href="{{ url_for('signup') }}" style="color: #00c6ff; font-weight: bold;">Sign Up</a>
+    </div>
+</body>
+</html>
