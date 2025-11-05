@@ -1,40 +1,66 @@
-# ---- Core Web Framework ----
-flask
-flask-login
-flask-bcrypt
-flask-sqlalchemy
-flask-session
-flask-cors
+# --- Core Web Framework ---
+Flask==3.1.2
+Flask-Bcrypt==1.0.1
+Flask-Login==0.6.3
+Flask-SQLAlchemy==3.1.1
+gunicorn==23.0.0
+python-dotenv==1.2.1
 
-# ---- Database ----
-SQLAlchemy
+# --- Database ---
+SQLAlchemy==2.0.44
 
-# ---- Environment & Setup ----
-python-dotenv
-setuptools
+# --- LangChain & LLM Integrations ---
+langchain==0.1.20
+langchain-core==0.1.52
+langchain-community==0.0.38
+langchain-google-genai==0.0.11
+langchain-huggingface==0.0.3
+langchain-pinecone==0.0.3
+langchain-text-splitters==0.0.2
 
-# ---- LangChain & AI Stack ----
-langchain
-langchain-community
-langchain-core
-langchain-huggingface
-langchain-pinecone
-langchain-google-genai
+# --- Pinecone Vector DB ---
+pinecone-client==3.2.2
+pinecone-plugin-assistant==1.8.0
+pinecone-plugin-interface==0.0.7
 
-# ---- Vector Database ----
-pinecone-client
+# --- Embeddings & NLP ---
+sentence-transformers==5.1.2
+transformers==4.57.1
+torch==2.9.0
+tqdm==4.67.1
+regex==2025.10.23
+numpy==1.26.4
+scikit-learn==1.7.2
+scipy==1.16.3
 
-# ---- NLP & Translation ----
-deep-translator
-langdetect
+# --- Translation & Language Detection ---
+deep-translator==1.11.4
+langdetect==1.0.9
 
-# ---- HuggingFace Embeddings ----
-transformers
-sentence-transformers
+# --- Google APIs ---
+google-generativeai==0.4.1
+google-auth==2.42.1
+google-api-core==2.28.1
+google-api-python-client==2.186.0
+googleapis-common-protos==1.71.0
+google-auth-httplib2==0.2.1
+httplib2==0.31.0
 
-# ---- Utility Libraries ----
-typing-extensions
-requests
+# --- Utility Libraries ---
+requests==2.32.5
+protobuf==4.25.8
+pydantic==2.12.3
+pydantic-settings==2.11.0
+PyYAML==6.0.3
+tenacity==8.5.0
+fsspec==2025.10.0
+filetype==1.2.0
+tiktoken==0.12.0
+attrs==25.4.0
+typing-inspect==0.9.0
+typing-inspection==0.4.2
 
-# ---- Deployment ----
-gunicorn
+# --- Optional but useful ---
+Jinja2==3.1.6
+itsdangerous==2.2.0
+Werkzeug==3.1.3
