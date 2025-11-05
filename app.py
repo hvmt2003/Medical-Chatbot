@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
+from flask_dance.contrib.google import make_google_blueprint, google
 from langchain_pinecone import PineconeVectorStore
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains import create_retrieval_chain
@@ -14,31 +15,48 @@ from langdetect import detect
 from datetime import datetime
 import os, re
 
-# -------------------------
-# Flask init & config
-# -------------------------
+# -------------------------------------------------
+# Flask app setup
+# -------------------------------------------------
+load_dotenv()
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # allow HTTP (for localhost dev)
+
 app = Flask(__name__, static_folder="static", template_folder="templates")
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "super_secret_key")
+
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
-load_dotenv()
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "super_secret_key")
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(BASE_DIR, 'chat.db')}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
 db = SQLAlchemy(app)
 
-# -------------------------
-# Models
-# -------------------------
+# -------------------------------------------------
+# Google OAuth setup
+# -------------------------------------------------
+google_bp = make_google_blueprint(
+    client_id=os.getenv("GOOGLE_OAUTH_CLIENT_ID"),
+    client_secret=os.getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
+    redirect_to="google_callback",  # points to our callback below
+    scope=[
+        "openid",
+        "https://www.googleapis.com/auth/userinfo.profile",
+        "https://www.googleapis.com/auth/userinfo.email",
+    ],
+)
+app.register_blueprint(google_bp, url_prefix="/login")
+
+# -------------------------------------------------
+# Database models
+# -------------------------------------------------
 class User(UserMixin, db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
+    password = db.Column(db.String(200), nullable=True)  # None for Google users
     sessions = db.relationship("ChatSession", backref="user", lazy=True, cascade="all, delete-orphan")
 
 @login_manager.user_loader
@@ -55,11 +73,7 @@ class ChatSession(db.Model):
 
     def to_dict(self):
         last_message = ChatMessage.query.filter_by(session_id=self.id).order_by(ChatMessage.timestamp.desc()).first()
-        return {
-            "id": self.id,
-            "title": self.title,
-            "snippet": last_message.content if last_message else ""
-        }
+        return {"id": self.id, "title": self.title, "snippet": last_message.content if last_message else ""}
 
 class ChatMessage(db.Model):
     __tablename__ = "chat_messages"
@@ -70,22 +84,18 @@ class ChatMessage(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
-        return {
-            "role": self.role,
-            "content": self.content
-        }
+        return {"role": self.role, "content": self.content}
 
-# -------------------------
-# LangChain setup
-# -------------------------
+# -------------------------------------------------
+# LangChain setup (Gemini + Pinecone)
+# -------------------------------------------------
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY
-os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
+os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY or ""
+os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY or ""
 
 embeddings = download_embeddings()
 index_name = "medical-chatbot"
-
 docsearch = PineconeVectorStore.from_existing_index(index_name=index_name, embedding=embeddings)
 retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k": 3})
 
@@ -93,9 +103,9 @@ model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.2)
 question_answer_chain = create_stuff_documents_chain(model, system_prompt)
 rag_chain = create_retrieval_chain(retriever, question_answer_chain)
 
-# -------------------------
-# Utility
-# -------------------------
+# -------------------------------------------------
+# Utility functions
+# -------------------------------------------------
 def clean_format(text: str) -> str:
     text = re.sub(r"\*\*", "", text)
     text = re.sub(r"(\d\.)", r"\n•", text)
@@ -104,23 +114,26 @@ def clean_format(text: str) -> str:
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
-# -------------------------
+# -------------------------------------------------
 # Auth routes
-# -------------------------
+# -------------------------------------------------
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
         name = request.form["name"]
         email = request.form["email"]
         password = bcrypt.generate_password_hash(request.form["password"]).decode("utf-8")
+
         if User.query.filter_by(email=email).first():
             flash("Email already registered!", "warning")
             return redirect(url_for("signup"))
+
         new_user = User(name=name, email=email, password=password)
         db.session.add(new_user)
         db.session.commit()
         flash("Signup successful! Please log in.", "success")
         return redirect(url_for("login"))
+
     return render_template("signup.html")
 
 @app.route("/login", methods=["GET", "POST"])
@@ -129,16 +142,52 @@ def login():
         email = request.form["email"]
         password = request.form["password"]
         user = User.query.filter_by(email=email).first()
-        if user and bcrypt.check_password_hash(user.password, password):
+
+        if user and user.password and bcrypt.check_password_hash(user.password, password):
             login_user(user)
             return redirect(url_for("chat_page"))
         flash("Invalid email or password.", "danger")
+
     return render_template("login.html")
+
+# -------------------------------------------------
+# Google OAuth callback handler
+# -------------------------------------------------
+@app.route("/google/callback")
+def google_callback():
+    if not google.authorized:
+        return redirect(url_for("google.login"))
+
+    # fetch user info
+    resp = google.get("https://www.googleapis.com/oauth2/v2/userinfo")
+    if not resp.ok:
+        flash("Google login failed. Please try again.", "danger")
+        return redirect(url_for("login"))
+
+    user_info = resp.json()
+    email = user_info.get("email")
+    name = user_info.get("name") or "Google User"
+
+    if not email:
+        flash("Google login did not return an email.", "danger")
+        return redirect(url_for("login"))
+
+    # login or sign up
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        user = User(name=name, email=email, password=None)
+        db.session.add(user)
+        db.session.commit()
+
+    login_user(user)
+    flash(f"Welcome, {name}!", "success")
+    return redirect(url_for("chat_page"))
 
 @app.route("/logout")
 @login_required
 def logout():
     logout_user()
+    flash("You’ve been logged out successfully.", "info")
     return redirect(url_for("login"))
 
 @app.route("/")
@@ -147,18 +196,17 @@ def index():
         return redirect(url_for("chat_page"))
     return redirect(url_for("login"))
 
-# -------------------------
-# Chat Page
-# -------------------------
+# -------------------------------------------------
+# Chat page
+# -------------------------------------------------
 @app.route("/chat")
 @login_required
 def chat_page():
     return render_template("chat.html", user=current_user)
 
-# ------------------------------------
-# CHAT HISTORY API ENDPOINTS
-# ------------------------------------
-
+# -------------------------------------------------
+# Chat APIs
+# -------------------------------------------------
 @app.route("/api/chats", methods=["GET"])
 @login_required
 def get_chats():
@@ -177,48 +225,38 @@ def create_chat():
 @app.route("/api/chats/<int:session_id>/messages", methods=["GET"])
 @login_required
 def get_messages(session_id):
-    session = db.session.get(ChatSession, session_id)
-    if not session:
-        abort(404)
-    if session.user_id != current_user.id:
+    session_obj = db.session.get(ChatSession, session_id)
+    if not session_obj or session_obj.user_id != current_user.id:
         return jsonify({"error": "Unauthorized"}), 403
-
-    messages = ChatMessage.query.filter_by(session_id=session.id).order_by(ChatMessage.timestamp.asc()).all()
+    messages = ChatMessage.query.filter_by(session_id=session_obj.id).order_by(ChatMessage.timestamp.asc()).all()
     return jsonify([m.to_dict() for m in messages])
 
 @app.route("/api/chats/<int:session_id>/rename", methods=["POST"])
 @login_required
 def rename_chat(session_id):
-    session = db.session.get(ChatSession, session_id)
-    if not session:
-        abort(404)
-    if session.user_id != current_user.id:
+    session_obj = db.session.get(ChatSession, session_id)
+    if not session_obj or session_obj.user_id != current_user.id:
         return jsonify({"error": "Unauthorized"}), 403
-
     title = request.json.get("title")
     if not title:
         return jsonify({"error": "Title is required"}), 400
-
-    session.title = title
+    session_obj.title = title
     db.session.commit()
-    return jsonify(session.to_dict())
+    return jsonify(session_obj.to_dict())
 
 @app.route("/api/chats/<int:session_id>", methods=["DELETE"])
 @login_required
 def delete_chat(session_id):
-    session = db.session.get(ChatSession, session_id)
-    if not session:
-        abort(404)
-    if session.user_id != current_user.id:
+    session_obj = db.session.get(ChatSession, session_id)
+    if not session_obj or session_obj.user_id != current_user.id:
         return jsonify({"error": "Unauthorized"}), 403
-
-    db.session.delete(session)
+    db.session.delete(session_obj)
     db.session.commit()
     return jsonify({"success": True})
 
-# ------------------------------------
-# Chatbot Route
-# ------------------------------------
+# -------------------------------------------------
+# Chatbot route
+# -------------------------------------------------
 @app.route("/get", methods=["POST"])
 @login_required
 def chat():
@@ -230,29 +268,29 @@ def chat():
         if not user_input or not session_id:
             return jsonify({"error": "Invalid request. 'msg' and 'session_id' are required."}), 400
 
-        session = db.session.get(ChatSession, session_id)
-        if not session or session.user_id != current_user.id:
+        session_obj = db.session.get(ChatSession, session_id)
+        if not session_obj or session_obj.user_id != current_user.id:
             return jsonify({"error": "Session not found or unauthorized"}), 404
 
-        # Detect language and translate to English
+        # Detect language
         try:
             user_lang = detect(user_input)
-        except:
+        except Exception:
             user_lang = "en"
         if user_lang not in ["hi", "en", "gu", "mr", "ta", "te", "bn", "kn", "ml", "pa", "ur"]:
             user_lang = "en"
 
         translated = GoogleTranslator(source="auto", target="en").translate(user_input) if user_lang != "en" else user_input
 
-        # Run RAG chain
+        # Generate bot response
         response = rag_chain.invoke({"input": translated})
         english_reply = clean_format(response["answer"])
         bot_reply = GoogleTranslator(source="en", target=user_lang).translate(english_reply) if user_lang != "en" else english_reply
 
-        # Save messages
+        # Save chat
         db.session.add_all([
-            ChatMessage(session_id=session.id, role="user", content=user_input),
-            ChatMessage(session_id=session.id, role="assistant", content=bot_reply)
+            ChatMessage(session_id=session_obj.id, role="user", content=user_input),
+            ChatMessage(session_id=session_obj.id, role="assistant", content=bot_reply),
         ])
         db.session.commit()
 
@@ -261,11 +299,10 @@ def chat():
         print("Error:", e)
         return jsonify({"error": str(e)}), 500
 
-# -------------------------
-# Run App
-# -------------------------
+# -------------------------------------------------
+# Run app
+# -------------------------------------------------
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    # Disable reloader to stop constant restarts on Windows
     app.run(host="0.0.0.0", port=8080, debug=True, use_reloader=False)
