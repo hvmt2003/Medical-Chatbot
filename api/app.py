@@ -1,3 +1,9 @@
+# --- This is the 3-line fix ---
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# --- End of fix ---
+
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
@@ -12,14 +18,21 @@ from src.prompt import *
 from deep_translator import GoogleTranslator
 from langdetect import detect
 from datetime import datetime
-import os, re
+import re
 
 # -------------------------------------------------
 # Flask app setup
 # -------------------------------------------------
 load_dotenv()
 
-app = Flask(__name__, static_folder="static", template_folder="templates")
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+# Set the template and static folder paths using the project root
+template_dir = os.path.join(project_root, 'templates')
+static_dir = os.path.join(project_root, 'static')
+
+# Initialize the Flask app with the correct *absolute* paths
+app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "super_secret_key")
 
 bcrypt = Bcrypt(app)
