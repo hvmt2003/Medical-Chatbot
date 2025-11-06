@@ -39,10 +39,23 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:////tmp/chat.db"
+# --- Smart Database Configuration (Works Locally AND on Netlify) ---
+# Check if we are running on Netlify by looking for a specific env variable
+IS_ON_NETLIFY = os.getenv("NETLIFY") == "true"
+
+if IS_ON_NETLIFY:
+    # On Netlify, use the only writable directory: /tmp
+    db_path = os.path.join('/tmp', 'chat.db')
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
+else:
+    # On your local machine, use the original path (in the api/ folder)
+    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+    db_path = os.path.join(BASE_DIR, 'chat.db')
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
+
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
+# --- End of Smart Configuration ---
 
 # -------------------------------------------------
 # Database models
