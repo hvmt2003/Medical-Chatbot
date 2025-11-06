@@ -39,22 +39,25 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
-# --- Smart Database Configuration (Works Locally AND on Netlify) ---
-# Check if we are running on Netlify by looking for a specific env variable
-IS_ON_NETLIFY = os.getenv("NETLIFY") == "true"
+# --- Smart Database Configuration (Works Locally AND on Vercel) ---
+# Check if we are running on Vercel by looking for their standard env variable
+IS_ON_VERCEL = os.getenv("VERCEL") == "1"
 
-if IS_ON_NETLIFY:
-    # On Netlify, use the only writable directory: /tmp
+if IS_ON_VERCEL:
+    # On Vercel, use the only writable directory: /tmp
+    # WARNING: Data in /tmp is NOT permanent and resets frequently.
     db_path = os.path.join('/tmp', 'chat.db')
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 else:
-    # On your local machine, use the original path (in the api/ folder)
+    # On your local machine, use the original path
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     db_path = os.path.join(BASE_DIR, 'chat.db')
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
+with app.app_context():
+    db.create_all()
 # --- End of Smart Configuration ---
 
 # -------------------------------------------------
