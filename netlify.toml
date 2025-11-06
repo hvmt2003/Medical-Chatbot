@@ -1,8 +1,0 @@
-[build]
-  command = "pip install -r requirements.txt"
-  functions = "api/"
-
-[[redirects]]
-  from = "/*"
-  to = "/api/app"
-  status = 200
