@@ -4,5 +4,5 @@
 
 [[redirects]]
   from = "/*"
-  to = "/api/index"
+  to = "/api/app"
   status = 200
