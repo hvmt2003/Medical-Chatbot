@@ -7,4 +7,4 @@ DocTalk - Your AI-Powered Medical Assistant
 ​Persistent History: Stores individual user chat sessions and messages using SQLAlchemy/SQLite.
 ​Retrieval-Augmented Generation (RAG): Answers are grounded in external medical knowledge stored in a Pinecone vector database, minimizing hallucinations and increasing accuracy.
 ​Gemini Integration: Utilizes the gemini-2.5-flash model via LangChain for fast, professional, and knowledgeable responses.
-​Deployment Ready: Configured for seamless deployment on platforms like Google Cloud Run or Vercel, with conditional session settings for both HTTP and HTTPS environments.
+​Deployment Ready: Configured for seamless deployment on platforms like Google Cloud Run, with conditional session settings for both HTTP and HTTPS environments.
