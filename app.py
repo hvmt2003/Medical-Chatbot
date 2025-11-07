@@ -99,25 +99,40 @@ with app.app_context():
     db.create_all()
 
 # -------------------------------------------------
-# 4. LangChain & AI Setup
 # -------------------------------------------------
-PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+# 4. LangChain & AI Setup (Lazy Initialization)
+# -------------------------------------------------
+rag_chain = None
 
-if not PINECONE_API_KEY or not GOOGLE_API_KEY:
-    print(" WARNING: API keys missing! AI features will fail.")
+def init_ai():
+    global rag_chain
+    if rag_chain is not None:
+        return rag_chain
 
-embeddings = download_embeddings()
-index_name = "medical-chatbot"
+    PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-# Connect to Pinecone
-docsearch = PineconeVectorStore.from_existing_index(index_name=index_name, embedding=embeddings)
-retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k": 3})
+    if not PINECONE_API_KEY or not GOOGLE_API_KEY:
+        print("⚠️ WARNING: Missing API keys — AI features disabled.")
+        return None
 
-# Setup Gemini Model
-model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3, google_api_key=GOOGLE_API_KEY)
-question_answer_chain = create_stuff_documents_chain(model, system_prompt)
-rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+    try:
+        embeddings = download_embeddings()
+        index_name = "medical-chatbot"
+
+        docsearch = PineconeVectorStore.from_existing_index(index_name=index_name, embedding=embeddings)
+        retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k": 3})
+
+        model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3, google_api_key=GOOGLE_API_KEY)
+        question_answer_chain = create_stuff_documents_chain(model, system_prompt)
+        rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+        print("✅ AI model initialized successfully.")
+        return rag_chain
+
+    except Exception as e:
+        print(f"❌ AI initialization failed: {e}")
+        return None
+
 
 # -------------------------------------------------
 # 5. Helper Functions
@@ -238,6 +253,14 @@ def rename_chat_session(session_id):
 @app.route("/get", methods=["POST"])
 @login_required
 def chat_response():
+    global rag_chain
+    if rag_chain is None:
+        rag_chain = init_ai()
+        if rag_chain is None:
+            return jsonify({
+                "error": "AI backend not initialized. Check API keys or Pinecone setup."
+            }), 500
+
     try:
         data = request.get_json()
         user_input = data.get("msg")
@@ -250,7 +273,6 @@ def chat_response():
         if not session_obj or session_obj.user_id != current_user.id:
             return jsonify({"error": "Session not found or unauthorized"}), 404
 
-        # --- Context Retrieval ---
         previous_messages = (
             ChatMessage.query.filter_by(session_id=session_id)
             .order_by(ChatMessage.timestamp.desc())
@@ -259,29 +281,30 @@ def chat_response():
         )
         history = "\n".join([f"{'User' if m.role == 'user' else 'Assistant'}: {m.content}" for m in previous_messages])
 
-        # --- RAG Generation ---
-        system_context = "You are DocTalk, a knowledgeable medical assistant. Answer safely and professionally in English only.\n\n"
+        system_context = (
+            "You are DocTalk, a knowledgeable medical assistant. "
+            "Answer safely and professionally in English only.\n\n"
+        )
         full_input = f"{system_context}Chat History:\n{history}\n\nCurrent Query: {user_input}\nAssistant:"
-        
+
         response = rag_chain.invoke({"input": full_input})
         bot_reply = clean_format(response["answer"])
 
-        # --- Save to DB ---
         db.session.add(ChatMessage(session_id=session_id, role="user", content=user_input))
         db.session.add(ChatMessage(session_id=session_id, role="assistant", content=bot_reply))
         db.session.commit()
 
-        # --- Auto-Title for New Chats ---
         if session_obj.title == "New Chat":
-             short_title = ' '.join(user_input.split()[:4]) + "..."
-             session_obj.title = short_title
-             db.session.commit()
+            short_title = " ".join(user_input.split()[:4]) + "..."
+            session_obj.title = short_title
+            db.session.commit()
 
         return jsonify({"reply": bot_reply})
 
     except Exception as e:
         print(f"Error in chat_response: {e}")
         return jsonify({"error": str(e)}), 500
+
 
 # -------------------------------------------------
 # 9. Local Execution Block
