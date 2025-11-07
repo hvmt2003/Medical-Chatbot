@@ -31,6 +31,13 @@ template_dir = os.path.join(project_root, 'templates')
 static_dir = os.path.join(project_root, 'static')
 
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
+
+# --- Secure session config for Cloud Run ---
+app.config.update(
+    SESSION_COOKIE_SECURE=True,      # Required for HTTPS
+    SESSION_COOKIE_SAMESITE="None",  # Allows cross-site cookies
+)
+
 # CRITICAL: Set this in Vercel Environment Variables for security!
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev_secret_key_do_not_use_in_prod")
 
