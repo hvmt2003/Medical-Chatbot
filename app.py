@@ -32,10 +32,15 @@ static_dir = os.path.join(project_root, 'static')
 
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
-# --- Secure session config for Cloud Run ---
+# Check if running on Google Cloud Run (K_SERVICE is always set there)
+IS_ON_GCP = os.getenv("K_SERVICE") is not None
+
+# --- Secure session config (Conditional for Cloud/Local) ---
 app.config.update(
-    SESSION_COOKIE_SECURE=True,      # Required for HTTPS
-    SESSION_COOKIE_SAMESITE="None",  # Allows cross-site cookies
+    # Set to True on GCP (HTTPS), False locally (HTTP).
+    SESSION_COOKIE_SECURE=IS_ON_GCP, 
+    # Set to 'None' on GCP, 'Lax' locally for better HTTP compatibility.
+    SESSION_COOKIE_SAMESITE="None" if IS_ON_GCP else "Lax",
 )
 
 # CRITICAL: Set this in Vercel Environment Variables for security!
@@ -48,14 +53,12 @@ login_manager.login_view = "login"
 # -------------------------------------------------
 # 2. Smart Database Configuration (Vercel Compatibility)
 # -------------------------------------------------
-# Check if running on Google Cloud Run (K_SERVICE is always set there)
-IS_ON_GCP = os.getenv("K_SERVICE") is not None
 
 if IS_ON_GCP:
-    # Use /tmp on Google Cloud
+    # Use /tmp on Google Cloud (data is non-persistent here)
     db_path = os.path.join('/tmp', 'chat.db')
 else:
-    # Use local folder for development
+    # Use local folder for development (persistent)
     db_path = os.path.join(project_root, 'chat.db')
 
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
@@ -280,9 +283,9 @@ def chat_response():
 
         # --- Auto-Title for New Chats ---
         if session_obj.title == "New Chat":
-             short_title = ' '.join(user_input.split()[:4]) + "..."
-             session_obj.title = short_title
-             db.session.commit()
+              short_title = ' '.join(user_input.split()[:4]) + "..."
+              session_obj.title = short_title
+              db.session.commit()
 
         return jsonify({"reply": bot_reply})
 

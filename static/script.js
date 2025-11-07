@@ -167,6 +167,11 @@ async function startNewChat() {
   chatsCache.unshift(created);
   renderChatList(chatsCache);
   await selectChat(created.id);
+  
+  // 🔑 NEW: Close sidebar if on mobile after starting a new chat
+  if (window.innerWidth <= 768) {
+      $("#sidebar").classList.remove("open");
+  }
 }
 
 // Sidebar click (select / rename / delete)
@@ -213,6 +218,11 @@ $("#chat-list").addEventListener("click", async (e) => {
 
   // Default → select chat
   await selectChat(id);
+
+  // 🔑 NEW: Auto-Close sidebar after selection on mobile
+  if (window.innerWidth <= 768) {
+    $("#sidebar").classList.remove("open");
+  }
 });
 
 // New chat button
@@ -271,6 +281,20 @@ $("#search-chats").addEventListener("input", (e) => {
   );
   renderChatList(filtered);
 });
+
+// -----------------------------
+// Mobile Sidebar Toggle
+// -----------------------------
+const sidebar = $("#sidebar");
+const mobileMenuBtn = $("#mobile-menu-btn");
+
+if (mobileMenuBtn && sidebar) {
+    mobileMenuBtn.addEventListener("click", () => {
+        // Toggles the 'open' class defined in style.css to show/hide the menu
+        sidebar.classList.toggle("open");
+    });
+}
+
 
 // Init
 (async function init() {

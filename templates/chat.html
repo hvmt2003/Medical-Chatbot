@@ -9,7 +9,6 @@
 </head>
 <body>
   <div class="app">
-    <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-top">
         <div class="brand">DocTalk</div>
@@ -22,7 +21,6 @@
 
       <div class="chat-list" id="chat-list"></div>
 
-      <!-- GPT-style user footer -->
       <div class="sidebar-footer">
         <div class="user-profile">
           <div class="user-avatar">{{ current_user.name[0] }}</div>
@@ -34,13 +32,15 @@
       </div>
     </aside>
 
-    <!-- MAIN -->
     <main class="main">
-<div class="topbar">
-  <div class="title" id="chat-title">DocTalk</div>
-  <div class="spacer"></div>
-</div>
-
+      <div class="topbar">
+        <button class="btn-icon mobile-menu-btn" id="mobile-menu-btn" title="Open chats">
+          <i class="fa fa-bars"></i>
+        </button>
+        
+        <div class="title" id="chat-title">DocTalk</div>
+        <div class="spacer"></div>
+      </div>
 
       <section class="messages" id="messages"></section>
 
@@ -48,7 +48,6 @@
         <textarea id="input-msg" placeholder="Ask about symptoms, medicines, diet..." rows="1"></textarea>
         <button id="send-btn" type="submit" title="Send">
           <span class="send-icon">
-            <!-- white circular button with up-arrow -->
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
               <path d="M12 4l-5.5 5.5 1.4 1.4L11 8.8V20h2V8.8l3.1 2.1 1.4-1.4L12 4z" fill="#000"/>
             </svg>
@@ -58,7 +57,6 @@
     </main>
   </div>
 
-  <!-- RENAME MODAL -->
   <div class="modal hidden" id="rename-modal">
     <div class="modal-panel">
       <div class="modal-title">Rename chat</div>
@@ -70,7 +68,6 @@
     </div>
   </div>
 
-  <!-- DELETE MODAL -->
   <div class="modal hidden" id="delete-modal">
     <div class="modal-panel">
       <div class="modal-title">Delete this chat?</div>

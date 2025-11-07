@@ -17,13 +17,17 @@ html,body{
   font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
   color:var(--text);
   background:var(--bg);
-  overflow:hidden; /* ❌ Disable page scroll */
+  overflow:hidden; /* Disable page scroll */
 }
 
+/* ======================================================= */
+/* 1. DESKTOP/DEFAULT LAYOUT (Sidebar + Main) */
+/* ======================================================= */
 .app{
   display:grid;
   grid-template-columns:280px 1fr;
   height:100vh;
+  transition: all 0.3s ease;
 }
 
 /* SIDEBAR */
@@ -34,7 +38,10 @@ html,body{
   flex-direction:column;
   padding:14px;
   gap:12px;
-  overflow:hidden; /* Keep header/footer fixed */
+  overflow:hidden;
+  position: relative; /* Default position */
+  transform: translateX(0);
+  z-index: 10;
 }
 
 .sidebar-top{
@@ -69,7 +76,7 @@ html,body{
   outline:none;
 }
 
-/* ✅ Scroll only for recents */
+/* Scroll only for recents */
 .chat-list{
   flex:1;
   overflow-y:auto;
@@ -123,6 +130,11 @@ html,body{
   background: rgba(0, 183, 255, 0.08);
 }
 
+.chat-content {
+  flex-grow: 1;
+  min-width: 0;
+}
+
 .chat-title {
   font-size: 14px;
   color: var(--text);
@@ -139,7 +151,7 @@ html,body{
   white-space: nowrap;
 }
 
-/* 🔹 Hide rename/delete by default, show on hover */
+/* Hide rename/delete by default, show on hover */
 .chat-actions {
   display: flex;
   gap: 6px;
@@ -210,12 +222,18 @@ html,body{
   cursor:pointer;
 }
 
+/* --- Mobile Menu Button Visibility (Hidden by Default) --- */
+.mobile-menu-btn {
+    display: none;
+    margin-right: 8px;
+}
+
 .title{
   font-weight:700;
   font-size:16px;
 }
 
-/* ✅ Scroll only for chat conversation */
+/* Scroll only for chat conversation */
 .messages{
   flex:1;
   overflow-y:auto;
@@ -288,9 +306,11 @@ html,body{
 /* COMPOSER */
 .composer{
   position:fixed;
-  left:280px; right:0; bottom:14px;
+  /* Default: Offset by 280px sidebar width */
+  left:280px; right:0; bottom:14px; 
   display:flex; gap:10px; align-items:center;
   padding:0 16px;
+  z-index: 3;
 }
 
 #input-msg{
@@ -317,6 +337,7 @@ html,body{
 .modal{
   position:fixed; inset:0; display:grid; place-items:center;
   background:rgba(0,0,0,.5);
+  z-index: 100;
 }
 .modal.hidden{ display:none; }
 .modal-panel{
@@ -406,4 +427,49 @@ html,body{
 
 .logout-text:hover {
   color: var(--accent);
+}
+
+/* ======================================================= */
+/* 2. MOBILE RESPONSIVENESS (Screen width <= 768px) */
+/* ======================================================= */
+@media (max-width: 768px) {
+  
+    /* Switch to single column layout */
+    .app {
+        grid-template-columns: 1fr; 
+    }
+
+    /* Mobile Menu Button Visibility */
+    .mobile-menu-btn {
+        display: flex; 
+    }
+
+    /* Sidebar is fixed, full screen, and hidden off-screen */
+    .sidebar {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        transform: translateX(-100%); 
+        transition: transform 0.3s ease;
+        z-index: 20; 
+    }
+
+    /* JavaScript adds this class to show the sidebar */
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    
+    /* Main section takes full width */
+    .main {
+        width: 100%;
+    }
+
+    /* Composer spans the entire screen width */
+    .composer {
+        left: 0; /* Remove the fixed 280px offset */
+        right: 0;
+        padding: 0 10px; /* Slight padding adjustment */
+    }
 }
