@@ -1,6 +1,6 @@
-# Medical Chatbot
+# DocTalk
 
-The **Medical Chatbot** is a conversational healthcare assistant built using **Flask**, **LangChain**, **Google Generative AI (Gemini)**, **Pinecone**, and **MySQL** hosted on **Google Cloud Platform (GCP)**.  
+The **DocTalk** is a conversational healthcare assistant built using **Flask**, **LangChain**, **Google Generative AI (Gemini)**, **Pinecone**, and **MySQL** hosted on **Google Cloud Platform (GCP)**.  
 It enables users to chat with an intelligent medical assistant, manage sessions, and securely store conversations in a MySQL database.
 
 > This project is for educational and research purposes only. It is not a substitute for professional medical advice.
