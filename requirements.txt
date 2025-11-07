@@ -5,14 +5,12 @@ Flask-SQLAlchemy==3.1.1
 Flask-Login==0.6.3
 python-dotenv==1.2.1
 
-# ALIGN EVERYTHING TO A KNOWN COMPATIBLE STACK (LangChain 0.1.x / Core 0.1.x)
-langchain==0.1.20
-langchain-core==0.1.52
-langchain-community==0.0.38
-langchain-google-genai==0.0.11
-langchain-pinecone==0.0.3
-
-# Keep these modern
+# FORCE MODERN, COMPATIBLE STACK
+langchain==0.2.0
+langchain-core==0.2.0
+langchain-community==0.4.1
+langchain-google-genai==2.0.0  # **Crucial Upgrade** (Uses modern google-generativeai)
+langchain-pinecone==0.3.0
+pydantic==2.7.4
 google-generativeai==0.8.5
 pinecone-client==6.0.0
-pydantic==2.7.4
