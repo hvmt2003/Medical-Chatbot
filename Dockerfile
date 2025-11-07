@@ -24,12 +24,8 @@ RUN pip install gunicorn
 # Copy the rest of your application code to the container.
 COPY . .
 
-# Expose the port that Cloud Run will set via the PORT env var.
-# Cloud Run typically uses 8080 by default.
-ENV PORT=8080
-
 # Define the command to run your app on container startup.
 # - workers 1: Good for standard Cloud Run instances (can increase for larger ones).
 # - threads 8: Allows handling multiple concurrent requests per worker.
 # - timeout 0: Disables gunicorn timeout to let Cloud Run manage request timeouts.
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 app:app
+CMD ["gunicorn","--bind","0.0.0.0:$PORT","--workers","1","--threads","8","--timeout","0","app:app"]

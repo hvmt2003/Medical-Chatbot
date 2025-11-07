@@ -41,13 +41,14 @@ login_manager.login_view = "login"
 # -------------------------------------------------
 # 2. Smart Database Configuration (Vercel Compatibility)
 # -------------------------------------------------
-IS_ON_VERCEL = os.getenv("VERCEL") == "1"
+# Check if running on Google Cloud Run (K_SERVICE is always set there)
+IS_ON_GCP = os.getenv("K_SERVICE") is not None
 
-if IS_ON_VERCEL:
-    print(" Running on Vercel: Using ephemeral /tmp/chat.db")
+if IS_ON_GCP:
+    # Use /tmp on Google Cloud
     db_path = os.path.join('/tmp', 'chat.db')
 else:
-    print(" Running Locally: Using permanent chat.db")
+    # Use local folder for development
     db_path = os.path.join(project_root, 'chat.db')
 
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"

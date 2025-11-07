@@ -10,3 +10,4 @@ langchain-pinecone
 google-generativeai
 pinecone-client
 pydantic
+gunicorn
