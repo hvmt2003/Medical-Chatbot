@@ -115,7 +115,7 @@ docsearch = PineconeVectorStore.from_existing_index(index_name=index_name, embed
 retriever = docsearch.as_retriever(search_type="similarity", search_kwargs={"k": 3})
 
 # Setup Gemini Model
-model = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.3, google_api_key=GOOGLE_API_KEY)
+model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3, google_api_key=GOOGLE_API_KEY)
 question_answer_chain = create_stuff_documents_chain(model, system_prompt)
 rag_chain = create_retrieval_chain(retriever, question_answer_chain)
 
