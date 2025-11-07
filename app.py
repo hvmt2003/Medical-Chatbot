@@ -283,9 +283,10 @@ def chat_response():
 
         # --- Auto-Title for New Chats ---
         if session_obj.title == "New Chat":
-              short_title = ' '.join(user_input.split()[:4]) + "..."
-              session_obj.title = short_title
-              db.session.commit()
+            # Resolved Conflict: using consistent indentation and quotes
+            short_title = ' '.join(user_input.split()[:4]) + "..."
+            session_obj.title = short_title
+            db.session.commit()
 
         return jsonify({"reply": bot_reply})
 
