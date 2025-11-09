@@ -52,7 +52,7 @@ login_manager.login_view = "login"
 
 
 # 2. Smart Database Configuration (Local = SQLite, Cloud = MySQL)
-# -------------------------------------------------
+
 from urllib.parse import quote_plus
 
 # URL-encoded password (important)
