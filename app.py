@@ -50,23 +50,29 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
+
+# 2. Smart Database Configuration (Local = SQLite, Cloud = MySQL)
 # -------------------------------------------------
-# 2. Smart Database Configuration (Vercel Compatibility)
-# -------------------------------------------------
+from urllib.parse import quote_plus
+
+# URL-encoded password (important)
+encoded_password = "P05tgre5qld%40t%40b%40ase"
 
 if IS_ON_GCP:
-    # Use /tmp on Google Cloud (data is non-persistent here)
-    db_path = os.path.join('/tmp', 'chat.db')
+    # --- Cloud Run / Deployed environment ---
+    app.config["SQLALCHEMY_DATABASE_URI"] = (
+        f"mysql+pymysql://docktalk-db:{encoded_password}"
+        f"@//cloudsql/bamboo-analyst-477309-n3:asia-south1:docktalk-db/doctalk"
+    )
 else:
-    # Use local folder for development (persistent)
+    # --- Local development (data stored in your computer) ---
     db_path = os.path.join(project_root, 'chat.db')
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
 db = SQLAlchemy(app)
 
-# -------------------------------------------------
+
 # 3. Database Models
 # -------------------------------------------------
 class User(UserMixin, db.Model):

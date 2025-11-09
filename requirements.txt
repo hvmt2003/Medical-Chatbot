@@ -19,3 +19,5 @@ langchain-huggingface==0.0.3
 # Keep these aligned with 0.1.x
 google-generativeai==0.4.1
 pinecone-client==3.2.2
+
+pymysql==1.1.1
