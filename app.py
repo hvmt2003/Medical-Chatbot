@@ -21,7 +21,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.helper import download_embeddings
 from src.prompt import system_prompt
 
-# -------------------------------------------------
+
 # 1. App & Environment Setup
 # -------------------------------------------------
 load_dotenv()
