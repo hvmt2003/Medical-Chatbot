@@ -21,7 +21,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.helper import download_embeddings
 from src.prompt import system_prompt
 
-# -------------------------------------------------
+
 # 1. App & Environment Setup
 # -------------------------------------------------
 load_dotenv()
@@ -311,4 +311,3 @@ def chat_response():
 # -------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)
-
