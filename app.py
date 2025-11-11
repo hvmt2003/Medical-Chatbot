@@ -51,28 +51,26 @@ login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
 
-# 2. Smart Database Configuration (Local = SQLite, Cloud = MySQL)
-
-from urllib.parse import quote_plus
-
-# URL-encoded password (important)
-encoded_password = "P05tgre5qld%40t%40b%40ase"
+# 2. Smart Database Configuration (Local + Cloud = SQLite)
+# -------------------------------------------------
+IS_ON_GCP = os.getenv("K_SERVICE") is not None  # Detects Cloud Run
 
 if IS_ON_GCP:
     # --- Cloud Run / Deployed environment ---
-    app.config["SQLALCHEMY_DATABASE_URI"] = (
-        f"mysql+pymysql://docktalk-db:{encoded_password}"
-        f"@//cloudsql/bamboo-analyst-477309-n3:asia-south1:docktalk-db/doctalk"
-    )
+    # Use /tmp folder (non-persistent but works fine for stateless apps)
+    db_path = os.path.join('/tmp', 'chat.db')
+    print(f"Using temporary SQLite DB at: {db_path}")
 else:
-    # --- Local development (data stored in your computer) ---
+    # --- Local development (persistent on your computer) ---
+    project_root = os.path.abspath(os.path.dirname(__file__))
     db_path = os.path.join(project_root, 'chat.db')
-    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
+    print(f"Using local SQLite DB at: {db_path}")
 
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
-
+# -------------------------------------------------
 # 3. Database Models
 # -------------------------------------------------
 class User(UserMixin, db.Model):
@@ -83,9 +81,11 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(200), nullable=False)
     sessions = db.relationship("ChatSession", backref="user", lazy=True, cascade="all, delete-orphan")
 
+
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
+
 
 class ChatSession(db.Model):
     __tablename__ = "chat_sessions"
@@ -99,6 +99,7 @@ class ChatSession(db.Model):
         last_message = ChatMessage.query.filter_by(session_id=self.id).order_by(ChatMessage.timestamp.desc()).first()
         return {"id": self.id, "title": self.title, "snippet": last_message.content if last_message else ""}
 
+
 class ChatMessage(db.Model):
     __tablename__ = "chat_messages"
     id = db.Column(db.Integer, primary_key=True)
@@ -110,9 +111,14 @@ class ChatMessage(db.Model):
     def to_dict(self):
         return {"role": self.role, "content": self.content}
 
-# CRITICAL FIX: Create tables GLOBALLY so Vercel sees them on cold start
+
+# -------------------------------------------------
+# 4. Initialize database
+# -------------------------------------------------
 with app.app_context():
     db.create_all()
+    print("✅ SQLite database initialized successfully.")
+
 
 # -------------------------------------------------
 # 4. LangChain & AI Setup
@@ -305,3 +311,4 @@ def chat_response():
 # -------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)
+
